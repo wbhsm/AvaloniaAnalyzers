@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaAnalyzers", "AvaloniaAnalyzers\AvaloniaAnalyzers\AvaloniaAnalyzers.csproj", "{4AC9C14A-D741-4891-8FB7-90C84FCD44FF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaAnalyzers.Test", "AvaloniaAnalyzers\AvaloniaAnalyzers.Test\AvaloniaAnalyzers.Test.csproj", "{37C310D5-86B1-4BEE-BF7B-FDB63586179D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaAnalyzers.Vsix", "AvaloniaAnalyzers\AvaloniaAnalyzers.Vsix\AvaloniaAnalyzers.Vsix.csproj", "{1F44E4B4-1C0C-40CF-BDD0-7E495397B605}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4AC9C14A-D741-4891-8FB7-90C84FCD44FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AC9C14A-D741-4891-8FB7-90C84FCD44FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AC9C14A-D741-4891-8FB7-90C84FCD44FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AC9C14A-D741-4891-8FB7-90C84FCD44FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{37C310D5-86B1-4BEE-BF7B-FDB63586179D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{37C310D5-86B1-4BEE-BF7B-FDB63586179D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{37C310D5-86B1-4BEE-BF7B-FDB63586179D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{37C310D5-86B1-4BEE-BF7B-FDB63586179D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F44E4B4-1C0C-40CF-BDD0-7E495397B605}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F44E4B4-1C0C-40CF-BDD0-7E495397B605}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F44E4B4-1C0C-40CF-BDD0-7E495397B605}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F44E4B4-1C0C-40CF-BDD0-7E495397B605}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
