@@ -54,39 +54,17 @@ namespace AvaloniaAnalyzers
                 diagnostic);
         }
 
-        private static async Task<Document> CreateDocument(Document document, VariableDeclaratorSyntax declaration, CancellationToken cancellationToken)
+        private static async Task<Document> CreateDocument(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
         {
             var editor = await DocumentEditor.CreateAsync(document);
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
-            var fieldSymbol = semanticModel.GetDeclaredSymbol(declaration);
+            var fieldSymbol = semanticModel.GetDeclaredSymbol(declarator);
 
-            var initializer = (InvocationExpressionSyntax)declaration.Initializer.Value;
-            var dependencyPropertyMethodName = ((MemberAccessExpressionSyntax)initializer.Expression).Name.ToString();
+            var initializer = (InvocationExpressionSyntax)declarator.Initializer.Value;
+            var originalRegisterMethodName = ((MemberAccessExpressionSyntax)initializer.Expression).Name.ToString();
 
-            var avaloniaNamespace = editor.Generator.IdentifierName("Avalonia");
-            var avaloniaPropertyIdentifier = editor.Generator.MemberAccessExpression(avaloniaNamespace, "AvaloniaProperty");
-            var avaloniaPropertyMethodName = dependencyPropertyMethodName.EndsWith("ReadOnly") ?
-                dependencyPropertyMethodName.Remove(dependencyPropertyMethodName.Length - "ReadOnly".Length) // Can remove if/when we add support for read-only properties
-                : dependencyPropertyMethodName;
-            var attachedOwner = (TypeSyntax)editor.Generator.TypeExpression(fieldSymbol.ContainingType);
-            var propertyType = (initializer.ArgumentList.Arguments[1].Expression as TypeOfExpressionSyntax)?.Type;
-            if (propertyType == null)
-            {
-                propertyType = (TypeSyntax)editor.Generator.TypeExpression(SpecialType.System_Object);
-            }
-            var ownerHostType = (initializer.ArgumentList.Arguments[2].Expression as TypeOfExpressionSyntax)?.Type;
-            if (ownerHostType == null)
-            {
-                ownerHostType = attachedOwner;
-            }
-
-            var typeArguments = avaloniaPropertyMethodName.Contains("Attached") ?
-                new[] { attachedOwner, ownerHostType, propertyType }
-                : new[] { ownerHostType, propertyType };
-            var methodIdentifier = editor.Generator.GenericName(avaloniaPropertyMethodName, typeArguments);
-            var methodExpression = editor.Generator.MemberAccessExpression(avaloniaPropertyIdentifier, methodIdentifier);
-            var avaloniaInvocation = (InvocationExpressionSyntax)editor.Generator.InvocationExpression(methodExpression, initializer.ArgumentList.Arguments[0]);
+            var avaloniaInvocation = GenerateBasicInvocation(editor.Generator, fieldSymbol, initializer, originalRegisterMethodName);
 
             var originalStaticConstructor = fieldSymbol.ContainingType.StaticConstructors.IsEmpty || fieldSymbol.ContainingType.StaticConstructors[0].DeclaringSyntaxReferences.IsEmpty ? null :
                 (ConstructorDeclarationSyntax)await fieldSymbol.ContainingType.StaticConstructors[0].DeclaringSyntaxReferences[0].GetSyntaxAsync(cancellationToken);
@@ -94,59 +72,13 @@ namespace AvaloniaAnalyzers
 
             ExpressionSyntax coerceCallbackSyntax = null;
             ExpressionSyntax validationCallbackSyntax = null;
-
+            var changeList = new ConverterProcessingResult();
 
             if (initializer.ArgumentList.Arguments.Count > 3) // Have to break down metadata constructor
             {
-                var metadataInitializer = (ObjectCreationExpressionSyntax)initializer.ArgumentList.Arguments[3].Expression;
-
-                if (metadataInitializer.ArgumentList.Arguments.Any())
-                {
-                    var currentArgument = 0;
-                    var firstArgument = metadataInitializer.ArgumentList.Arguments[currentArgument];
-                    var firstArgumentType = semanticModel.GetTypeInfo(firstArgument.Expression, cancellationToken).ConvertedType;
-                    if (firstArgumentType.ToDisplayString() == "System.Windows.PropertyChangedCallback") // Null is a delegate
-                    {
-                        staticConstructor = AddChangedHandlerToStaticConstructor(editor.Generator, staticConstructor, fieldSymbol.ContainingType, declaration, firstArgument);
-                        ++currentArgument;
-                        if (metadataInitializer.ArgumentList.Arguments.Count > currentArgument)
-                        {
-                            coerceCallbackSyntax = metadataInitializer.ArgumentList.Arguments[currentArgument].Expression;
-                            currentArgument++;
-                        }
-                    }
-                    else
-                    {
-                        avaloniaInvocation = avaloniaInvocation.AddArgumentListArguments(metadataInitializer.ArgumentList.Arguments[currentArgument]);
-                        ++currentArgument;
-                        if (metadataInitializer.ArgumentList.Arguments.Count > currentArgument)
-                        {
-                            var metadataType = semanticModel.GetTypeInfo(metadataInitializer, cancellationToken).Type;
-                            var secondArgument = metadataInitializer.ArgumentList.Arguments[currentArgument].Expression;
-                            var secondArgumentType = semanticModel.GetTypeInfo(secondArgument, cancellationToken).ConvertedType;
-                            if (secondArgumentType.ToString() == "System.Windows.FrameworkPropertyMetadataOptions")
-                            {
-                                avaloniaInvocation = ProcessFrameworkMetadataOptions(
-                                    editor, semanticModel, avaloniaInvocation, secondArgument, secondArgumentType, cancellationToken);
-                                ++currentArgument;
-                            }
-                        }
-                        if (metadataInitializer.ArgumentList.Arguments.Count > currentArgument)
-                        {
-                            var changedCallback = metadataInitializer.ArgumentList.Arguments[currentArgument];
-                            var containingType = fieldSymbol.ContainingType;
-                            var generator = editor.Generator;
-                            staticConstructor = AddChangedHandlerToStaticConstructor(generator, staticConstructor, containingType, declaration, changedCallback);
-                            ++currentArgument;
-                        }
-                        if (metadataInitializer.ArgumentList.Arguments.Count > currentArgument)
-                        {
-                            coerceCallbackSyntax = metadataInitializer.ArgumentList.Arguments[currentArgument].Expression;
-                            currentArgument++;
-                        }
-                        // We do not have support for the remaining metadata items (disable animation, update source trigger) so we stop processing here.
-                    }
-                }
+                var results = await ProcessMetadata(editor.Generator, semanticModel, fieldSymbol, cancellationToken);
+                changeList = changeList.AppendResult(results.Item1);
+                coerceCallbackSyntax = results.Item2;
             }
             if (initializer.ArgumentList.Arguments.Count > 4)
             {
@@ -156,10 +88,11 @@ namespace AvaloniaAnalyzers
             if (coerceCallbackSyntax != null || validationCallbackSyntax != null)
             {
                 var combinedCoerceValidateExpression = CreateCombinedCoerceValidate(editor.Generator, semanticModel, coerceCallbackSyntax, validationCallbackSyntax);
-                avaloniaInvocation = avaloniaInvocation.AddArgumentListArguments((ArgumentSyntax)editor.Generator.Argument("validate", RefKind.None, combinedCoerceValidateExpression));
+                changeList = changeList.AddArguments((ArgumentSyntax)editor.Generator.Argument("validate", RefKind.None, combinedCoerceValidateExpression));
             }
-
-            ReplaceMember(editor, semanticModel, declaration, avaloniaInvocation, avaloniaPropertyMethodName.Contains("Attached"));
+            avaloniaInvocation = avaloniaInvocation.AddArgumentListArguments(changeList.AdditionalInvocationArguments.ToArray());
+            ReplaceMember(editor, semanticModel, declarator, avaloniaInvocation);
+            staticConstructor = staticConstructor.AddBodyStatements(changeList.AdditionalStaticConstructorStatements.ToArray());
             if (originalStaticConstructor != null && originalStaticConstructor.Body.Statements.Count < staticConstructor.Body.Statements.Count)
             {
                 editor.ReplaceNode(originalStaticConstructor, staticConstructor);
