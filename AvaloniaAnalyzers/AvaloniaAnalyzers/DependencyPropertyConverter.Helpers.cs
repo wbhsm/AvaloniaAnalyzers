@@ -101,9 +101,9 @@ namespace AvaloniaAnalyzers
             return (StatementSyntax)generator.ExpressionStatement(classHandlerInvocation);
         }
 
-        public static ConstructorDeclarationSyntax GenerateEmptyStaticConstructor(DocumentEditor editor, INamedTypeSymbol containingType)
+        public static ConstructorDeclarationSyntax GenerateEmptyStaticConstructor(SyntaxGenerator generator, INamedTypeSymbol containingType)
         {
-            return (ConstructorDeclarationSyntax)editor.Generator.ConstructorDeclaration(containingType.Name, modifiers: DeclarationModifiers.Static);
+            return (ConstructorDeclarationSyntax)generator.ConstructorDeclaration(containingType.Name, modifiers: DeclarationModifiers.Static);
         }
 
         public static async Task<Tuple<ConverterProcessingResult, ExpressionSyntax>> ProcessMetadata(SyntaxGenerator generator, SemanticModel semanticModel, ISymbol fieldSymbol, CancellationToken cancellationToken)
@@ -141,7 +141,7 @@ namespace AvaloniaAnalyzers
                         if (secondArgumentType.ToString() == "System.Windows.FrameworkPropertyMetadataOptions")
                         {
                             metadataChanges = metadataChanges.AppendResult(ProcessFrameworkMetadataOptions(
-                                generator, semanticModel, secondArgument, secondArgumentType, cancellationToken));
+                                generator, semanticModel, secondArgument, secondArgumentType, fieldSymbol.Name, cancellationToken));
                             ++currentArgument;
                         }
                     }
@@ -149,7 +149,7 @@ namespace AvaloniaAnalyzers
                     {
                         var changedCallback = metadataInitializer.ArgumentList.Arguments[currentArgument];
                         var containingType = fieldSymbol.ContainingType;
-                        metadataChanges.AddStaticConstructorStatements(
+                        metadataChanges = metadataChanges.AddStaticConstructorStatements(
                             BuildChangedHandler(generator, containingType, declarator, changedCallback));
                         ++currentArgument;
                     }
@@ -167,12 +167,17 @@ namespace AvaloniaAnalyzers
 
         public static ConverterProcessingResult ProcessFrameworkMetadataOptions(
             SyntaxGenerator generator, SemanticModel semanticModel, 
-            ExpressionSyntax metadataOptions, ITypeSymbol metadataOptionsType, CancellationToken cancellationToken)
+            ExpressionSyntax metadataOptions, ITypeSymbol metadataOptionsType, string propertyName, CancellationToken cancellationToken)
         {
             var inheritsMember = (IFieldSymbol)metadataOptionsType.GetMembers("Inherits")[0];
             var bindsTwoWayByDefault = (IFieldSymbol)metadataOptionsType.GetMembers("BindsTwoWayByDefault")[0];
+            var affectsMeasure = (IFieldSymbol)metadataOptionsType.GetMembers("AffectsMeasure")[0];
+            var affectsArrange = (IFieldSymbol)metadataOptionsType.GetMembers("AffectsArrange")[0];
+            var affectsRender = (IFieldSymbol)metadataOptionsType.GetMembers("AffectsRender")[0];
+
             var optionsValue = semanticModel.GetConstantValue(metadataOptions, cancellationToken);
             var additionalArguments = new List<ArgumentSyntax>();
+            var additionalStatements = new List<StatementSyntax>();
             if (OptionalHasEnumFlag(optionsValue, inheritsMember))
             {
                 additionalArguments.Add((ArgumentSyntax)generator.Argument("inherits", RefKind.None, generator.TrueLiteralExpression()));
@@ -187,8 +192,26 @@ namespace AvaloniaAnalyzers
                     , "TwoWay");
                 additionalArguments.Add((ArgumentSyntax)generator.Argument("defaultBindingMode", RefKind.None, bindingMode));
             }
+            if(OptionalHasEnumFlag(optionsValue, affectsArrange))
+            {
+                additionalStatements.Add((StatementSyntax)generator.ExpressionStatement(
+                    generator.InvocationExpression(
+                        generator.IdentifierName("AffectsArrange"), generator.IdentifierName(propertyName))));
+            }
+            if (OptionalHasEnumFlag(optionsValue, affectsMeasure))
+            {
+                additionalStatements.Add((StatementSyntax)generator.ExpressionStatement(
+                    generator.InvocationExpression(
+                        generator.IdentifierName("AffectsMeasure"), generator.IdentifierName(propertyName))));
+            }
+            if (OptionalHasEnumFlag(optionsValue, affectsRender))
+            {
+                additionalStatements.Add((StatementSyntax)generator.ExpressionStatement(
+                    generator.InvocationExpression(
+                        generator.IdentifierName("AffectsRender"), generator.IdentifierName(propertyName))));
+            }
 
-            return new ConverterProcessingResult(additionalArguments, Enumerable.Empty<StatementSyntax>());
+            return new ConverterProcessingResult(additionalArguments, additionalStatements);
         }
 
         private static bool OptionalHasEnumFlag(Optional<object> optional, IFieldSymbol flagField)

@@ -30,8 +30,7 @@ namespace AvaloniaAnalyzers
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            // See https://github.com/dotnet/roslyn/blob/master/docs/analyzers/FixAllProvider.md for more information on Fix All Providers
-            return WellKnownFixAllProviders.BatchFixer;
+            return new DependencyPropertyFixAllProvider();
         }
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -41,20 +40,19 @@ namespace AvaloniaAnalyzers
             // TODO: Replace the following code with your own analysis, generating a CodeAction for each fix to suggest
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-
-            // Find the type declaration identified by the diagnostic.
+            
             var declaration = (VariableDeclaratorSyntax)root.FindNode(diagnosticSpan);
 
             // Register a code action that will invoke the fix.
             context.RegisterCodeFix(
                 CodeAction.Create(
                     title: title,
-                    createChangedDocument: c => CreateDocument(context.Document, declaration, c),
+                    createChangedDocument: c => ConvertProperty(context.Document, declaration, c),
                     equivalenceKey: title),
                 diagnostic);
         }
 
-        private static async Task<Document> CreateDocument(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
+        internal static async Task<Document> ConvertProperty(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
         {
             var editor = await DocumentEditor.CreateAsync(document);
 
@@ -68,7 +66,7 @@ namespace AvaloniaAnalyzers
 
             var originalStaticConstructor = fieldSymbol.ContainingType.StaticConstructors.IsEmpty || fieldSymbol.ContainingType.StaticConstructors[0].DeclaringSyntaxReferences.IsEmpty ? null :
                 (ConstructorDeclarationSyntax)await fieldSymbol.ContainingType.StaticConstructors[0].DeclaringSyntaxReferences[0].GetSyntaxAsync(cancellationToken);
-            var staticConstructor = originalStaticConstructor == null ? GenerateEmptyStaticConstructor(editor, fieldSymbol.ContainingType) : originalStaticConstructor;
+            var staticConstructor = originalStaticConstructor == null ? GenerateEmptyStaticConstructor(editor.Generator, fieldSymbol.ContainingType) : originalStaticConstructor;
 
             ExpressionSyntax coerceCallbackSyntax = null;
             ExpressionSyntax validationCallbackSyntax = null;
