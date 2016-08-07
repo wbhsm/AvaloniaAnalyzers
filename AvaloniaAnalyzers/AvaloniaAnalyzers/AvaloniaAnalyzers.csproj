@@ -41,6 +41,8 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="WpfTypeConverter.Analyzer.cs" />
+    <Compile Include="WpfTypeConverter.Fixer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources.resx">
