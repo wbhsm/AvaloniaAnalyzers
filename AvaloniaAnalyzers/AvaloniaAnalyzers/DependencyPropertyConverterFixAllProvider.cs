@@ -15,17 +15,48 @@ namespace AvaloniaAnalyzers
     {
         public override async Task<CodeAction> GetFixAsync(FixAllContext fixAllContext)
         {
-            var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(fixAllContext.Document);
+            if (fixAllContext.Scope == FixAllScope.Document)
+            {
+                var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(fixAllContext.Document);
 
-            return CodeAction.Create(
-                "Convert all DependencyProperties in a document",
-                c => ConvertDocumentAsync(fixAllContext.Document, diagnostics, c)
-                );
+                return CodeAction.Create(
+                    "Convert all DependencyProperties in a document",
+                    c => ConvertDocumentAsync(fixAllContext.Document, diagnostics, c)
+                    );
+            }
+            else if (fixAllContext.Scope == FixAllScope.Project)
+            {
+                var documentDiagnostics = new Dictionary<Document, IEnumerable<Diagnostic>>();
+                foreach (var document in fixAllContext.Project.Documents)
+                {
+                    documentDiagnostics.Add(document, await fixAllContext.GetDocumentDiagnosticsAsync(document));
+                }
+                return CodeAction.Create(
+                    "Convert all DependencyProperties in a solution",
+                    c => ConvertSolutionAsync(fixAllContext.Solution, documentDiagnostics, c)
+                    );
+            }
+            else if (fixAllContext.Scope == FixAllScope.Solution)
+            {
+                var documentDiagnostics = new Dictionary<Document, IEnumerable<Diagnostic>>();
+                foreach (var document in fixAllContext.Solution.Projects.SelectMany(project => project.Documents))
+                {
+                    documentDiagnostics.Add(document, await fixAllContext.GetDocumentDiagnosticsAsync(document));
+                }
+                return CodeAction.Create(
+                    "Convert all DependencyProperties in a solution",
+                    c => ConvertSolutionAsync(fixAllContext.Solution, documentDiagnostics, c)
+                    );
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
         }
 
         public override IEnumerable<FixAllScope> GetSupportedFixAllScopes()
         {
-            return new[] { FixAllScope.Document };
+            return new[] { FixAllScope.Document, FixAllScope.Project, FixAllScope.Solution };
         }
 
         private static async Task<Document> ConvertDocumentAsync(Document d, IEnumerable<Diagnostic> diagnostics, CancellationToken c)
@@ -48,6 +79,16 @@ namespace AvaloniaAnalyzers
             }
 
             return changedDoc;
+        }
+
+        private static async Task<Solution> ConvertSolutionAsync(Solution s, IDictionary<Document, IEnumerable<Diagnostic>> documentDiagnostics, CancellationToken c)
+        {
+            var changedDocuments = await Task.WhenAll(documentDiagnostics.Select(kvp => ConvertDocumentAsync(kvp.Key, kvp.Value, c)));
+            foreach (var doc in changedDocuments)
+            {
+                s = s.WithDocumentSyntaxRoot(doc.Id, await doc.GetSyntaxRootAsync(c));
+            }
+            return s;
         }
     }
 }

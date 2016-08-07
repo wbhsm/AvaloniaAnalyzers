@@ -16,6 +16,7 @@ using Microsoft.CodeAnalysis.Editing;
 
 namespace AvaloniaAnalyzers
 {
+    using Microsoft.CodeAnalysis.Formatting;
     using static DependencyPropertyConverter;
 
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(DependencyPropertyConverterFixer)), Shared]
@@ -88,9 +89,11 @@ namespace AvaloniaAnalyzers
                 var combinedCoerceValidateExpression = CreateCombinedCoerceValidate(editor.Generator, semanticModel, coerceCallbackSyntax, validationCallbackSyntax);
                 changeList = changeList.AddArguments((ArgumentSyntax)editor.Generator.Argument("validate", RefKind.None, combinedCoerceValidateExpression));
             }
-            avaloniaInvocation = avaloniaInvocation.AddArgumentListArguments(changeList.AdditionalInvocationArguments.ToArray());
+            avaloniaInvocation = avaloniaInvocation.AddArgumentListArguments(changeList.AdditionalInvocationArguments.ToArray())
+                .WithAdditionalAnnotations(Formatter.Annotation);
             ReplaceMember(editor, semanticModel, declarator, avaloniaInvocation);
-            staticConstructor = staticConstructor.AddBodyStatements(changeList.AdditionalStaticConstructorStatements.ToArray());
+            staticConstructor = staticConstructor.AddBodyStatements(changeList.AdditionalStaticConstructorStatements.ToArray())
+                .WithAdditionalAnnotations(Formatter.Annotation);
             if (originalStaticConstructor != null && originalStaticConstructor.Body.Statements.Count < staticConstructor.Body.Statements.Count)
             {
                 editor.ReplaceNode(originalStaticConstructor, staticConstructor);
