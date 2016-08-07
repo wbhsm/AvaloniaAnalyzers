@@ -1,22 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.Formatting;
 using System.Collections.Immutable;
 using System.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CodeFixes;
-using Microsoft.CodeAnalysis.CodeActions;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Rename;
-using Microsoft.CodeAnalysis.Text;
-using Microsoft.CodeAnalysis.Editing;
 
 namespace AvaloniaAnalyzers
 {
-    using Microsoft.CodeAnalysis.Formatting;
     using static DependencyPropertyConverter;
 
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(DependencyPropertyConverterFixer)), Shared]
@@ -55,9 +51,9 @@ namespace AvaloniaAnalyzers
 
         internal static async Task<Document> ConvertProperty(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
         {
-            var editor = await DocumentEditor.CreateAsync(document);
+            var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
 
-            var semanticModel = await document.GetSemanticModelAsync(cancellationToken);
+            var semanticModel = editor.SemanticModel;
             var fieldSymbol = semanticModel.GetDeclaredSymbol(declarator);
 
             var initializer = (InvocationExpressionSyntax)declarator.Initializer.Value;
