@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.Formatting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,8 @@ namespace AvaloniaAnalyzers
 {
     static class DependencyPropertyConverter
     {
+        internal static readonly SyntaxAnnotation NamespaceImportAnnotation = new SyntaxAnnotation();
+
         public static void ReplaceMember(DocumentEditor editor, SemanticModel model, VariableDeclaratorSyntax original, InvocationExpressionSyntax avaloniaInvocation)
         {
             var parent = (VariableDeclarationSyntax)original.Parent;
@@ -32,7 +35,8 @@ namespace AvaloniaAnalyzers
         public static InvocationExpressionSyntax GenerateBasicInvocation(SyntaxGenerator generator, ISymbol fieldSymbol, InvocationExpressionSyntax initializer, string dependencyPropertyMethodName)
         {
             var avaloniaNamespace = generator.IdentifierName("Avalonia");
-            var avaloniaPropertyIdentifier = generator.MemberAccessExpression(avaloniaNamespace, "AvaloniaProperty");
+            var avaloniaPropertyIdentifier = generator.MemberAccessExpression(avaloniaNamespace, "AvaloniaProperty")
+                .WithAdditionalAnnotations(NamespaceImportAnnotation);
             var avaloniaPropertyMethodName = dependencyPropertyMethodName.EndsWith("ReadOnly") ?
                 dependencyPropertyMethodName.Remove(dependencyPropertyMethodName.Length - "ReadOnly".Length) // Can remove if/when we add support for read-only properties
                 : dependencyPropertyMethodName;

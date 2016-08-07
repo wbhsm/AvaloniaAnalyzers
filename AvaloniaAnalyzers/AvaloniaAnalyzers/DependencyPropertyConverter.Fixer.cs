@@ -52,7 +52,6 @@ namespace AvaloniaAnalyzers
         internal static async Task<Document> ConvertProperty(Document document, VariableDeclaratorSyntax declarator, CancellationToken cancellationToken)
         {
             var editor = await DocumentEditor.CreateAsync(document, cancellationToken);
-
             var semanticModel = editor.SemanticModel;
             var fieldSymbol = semanticModel.GetDeclaredSymbol(declarator);
 
@@ -99,7 +98,7 @@ namespace AvaloniaAnalyzers
                 editor.AddMember(await fieldSymbol.ContainingType.DeclaringSyntaxReferences[0].GetSyntaxAsync(cancellationToken), staticConstructor);
             }
 
-            return editor.GetChangedDocument();
+            return await ImportAdder.AddImportsAsync(editor.GetChangedDocument(), NamespaceImportAnnotation, cancellationToken: cancellationToken);
         }
     }
 }

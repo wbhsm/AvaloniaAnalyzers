@@ -22,25 +22,26 @@ namespace AvaloniaAnalyzers.Test
         public void ConvertsBasicDependencyPropertyToAvaloniaProperty()
         {
             var test = @"
-    using System.Windows;
+using System.Windows;
 
-    namespace ConsoleApplication1
+namespace ConsoleApplication1
+{
+    class TestProperty
     {
-        class TestProperty
-        {
-            public static readonly DependencyProperty Property1 = DependencyProperty.Register(""Property"", typeof(int), typeof(TestProperty));
-        }
-    }";
+        public static readonly DependencyProperty Property1 = DependencyProperty.Register(""Property"", typeof(int), typeof(TestProperty));
+    }
+}";
             var fixTest = @"
-    using System.Windows;
+using System.Windows;
+using Avalonia;
 
-    namespace ConsoleApplication1
+namespace ConsoleApplication1
+{
+    class TestProperty
     {
-        class TestProperty
-        {
-            public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestProperty, int>(""Property"");
-        }
-    }";
+        public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestProperty, int>(""Property"");
+    }
+}";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }
 
@@ -48,25 +49,26 @@ namespace AvaloniaAnalyzers.Test
         public void ConvertsReadOnlyDependencyPropertyToAvaloniaProperty()
         {
             var test = @"
-    using System.Windows;
+using System.Windows;
 
-    namespace ConsoleApplication1
+namespace ConsoleApplication1
+{
+    class TestProperty
     {
-        class TestProperty
-        {
-            public static readonly DependencyProperty Property1 = DependencyProperty.RegisterReadOnly(""Property"", typeof(int), typeof(TestProperty));
-        }
-    }";
+        public static readonly DependencyProperty Property1 = DependencyProperty.RegisterReadOnly(""Property"", typeof(int), typeof(TestProperty));
+    }
+}";
             var fixTest = @"
-    using System.Windows;
+using System.Windows;
+using Avalonia;
 
-    namespace ConsoleApplication1
+namespace ConsoleApplication1
+{
+    class TestProperty
     {
-        class TestProperty
-        {
-            public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestProperty, int>(""Property"");
-        }
-    }";
+        public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestProperty, int>(""Property"");
+    }
+}";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }
 
@@ -74,27 +76,28 @@ namespace AvaloniaAnalyzers.Test
         public void ConvertsAttachedDependencyPropertyToAttachedAvaloniaProperty()
         {
             var test = @"
-    using System.Windows;
+using System.Windows;
 
-    namespace ConsoleApplication1
+namespace ConsoleApplication1
+{
+    class TestProperty
     {
-        class TestProperty
-        {
-            public static readonly DependencyProperty Property1 = DependencyProperty.RegisterAttached(""Property"", typeof(int), typeof(OtherType));
-        }
-        class OtherType {}
-    }";
+        public static readonly DependencyProperty Property1 = DependencyProperty.RegisterAttached(""Property"", typeof(int), typeof(OtherType));
+    }
+    class OtherType {}
+}";
             var fixTest = @"
-    using System.Windows;
+using System.Windows;
+using Avalonia;
 
-    namespace ConsoleApplication1
+namespace ConsoleApplication1
+{
+    class TestProperty
     {
-        class TestProperty
-        {
-            public static readonly Avalonia.AttachedProperty<int> Property1 = Avalonia.AvaloniaProperty.RegisterAttached<TestProperty, OtherType, int>(""Property"");
-        }
-        class OtherType {}
-    }";
+        public static readonly AttachedProperty<int> Property1 = AvaloniaProperty.RegisterAttached<TestProperty, OtherType, int>(""Property"");
+    }
+    class OtherType {}
+}";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }
 
@@ -112,10 +115,11 @@ class TestWithHandler
 }";
             var fixTest = @"
 using System.Windows;
+using Avalonia;
 
 class TestWithHandler
 {
-    public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestWithHandler, int>(""Property1"");
+    public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestWithHandler, int>(""Property1"");
 
     private static void Changed(DependencyObject o, object v){}
 
@@ -139,10 +143,11 @@ class TestWithHandler
 }";
             var fixTest = @"
 using System.Windows;
+using Avalonia;
 
 class TestWithHandler
 {
-    public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5);
+    public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5);
 }";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }
@@ -159,10 +164,11 @@ class TestWithHandler
 }";
             var fixTest = @"
 using System.Windows;
+using Avalonia;
 
 class TestWithHandler
 {
-    public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5, inherits: true);
+    public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5, inherits: true);
 }";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }
@@ -179,10 +185,11 @@ class TestWithHandler
 }";
             var fixTest = @"
 using System.Windows;
+using Avalonia;
 
 class TestWithHandler
 {
-    public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5, defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+    public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5, defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 }";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }
@@ -199,10 +206,11 @@ class TestWithHandler
 }";
             var fixTest = @"
 using System.Windows;
+using Avalonia;
 
 class TestWithHandler
 {
-    public static readonly Avalonia.StyledProperty<int> Property1 = Avalonia.AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5, inherits: true, defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+    public static readonly StyledProperty<int> Property1 = AvaloniaProperty.Register<TestWithHandler, int>(""Property1"", 5, inherits: true, defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 }";
             VerifyCSharpFix(test, fixTest, allowNewCompilerDiagnostics: true);
         }

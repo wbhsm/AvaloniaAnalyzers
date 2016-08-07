@@ -39,7 +39,7 @@ namespace AvaloniaAnalyzers.Test
             var expected = new DiagnosticResult
             {
                 Id = DependencyPropertyConverterAnalyzer.DiagnosticId,
-                Message = "Type name '{0}' contains lowercase letters",
+                Message = "Field is a WPF DependencyProperty",
                 Severity = DiagnosticSeverity.Warning,
                 Locations =
                     new[] {
