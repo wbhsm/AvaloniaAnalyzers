@@ -88,9 +88,12 @@ namespace AvaloniaAnalyzers
             ReplaceMember(editor, semanticModel, declarator, avaloniaInvocation);
             staticConstructor = staticConstructor.AddBodyStatements(changeList.AdditionalStaticConstructorStatements.ToArray())
                 .WithAdditionalAnnotations(Formatter.Annotation);
-            if (originalStaticConstructor != null && originalStaticConstructor.Body.Statements.Count < staticConstructor.Body.Statements.Count)
+            if (originalStaticConstructor != null)
             {
-                editor.ReplaceNode(originalStaticConstructor, staticConstructor);
+                if (originalStaticConstructor.Body.Statements.Count < staticConstructor.Body.Statements.Count)
+                {
+                    editor.ReplaceNode(originalStaticConstructor, staticConstructor);
+                }
             }
             else if (staticConstructor.Body.Statements.Count > 0)
             {
