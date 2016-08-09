@@ -13,6 +13,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.CodeAnalysis.Editing;
+using Microsoft.CodeAnalysis.Formatting;
 
 namespace AvaloniaAnalyzers
 {
@@ -49,17 +50,21 @@ namespace AvaloniaAnalyzers
                 diagnostic);
         }
 
-        private static async Task<Document> ConvertType(Document document, SyntaxNode type, CancellationToken c)
+        private async Task<Document> ConvertType(Document document, SyntaxNode type, CancellationToken c)
         {
             var editor = await DocumentEditor.CreateAsync(document, c);
-            if(type is BaseTypeSyntax)
+            if (type is BaseTypeSyntax)
             {
                 type = ((BaseTypeSyntax)type).Type;
             }
             var originalTypeSymbol = editor.SemanticModel.GetTypeInfo(type, c).Type;
             SyntaxNode newTypeSyntax = null;
-            var avaloniaNamespace = editor.Generator.IdentifierName("Avalonia");
-            var avaloniaControlsNamespace = editor.Generator.MemberAccessExpression(avaloniaNamespace, "Controls");
+            var avaloniaNamespace = editor.Generator.IdentifierName("Avalonia")
+                .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
+            var avaloniaControlsNamespace = editor.Generator.MemberAccessExpression(avaloniaNamespace, "Controls")
+                .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
+            var avaloniaMediaNamespace = editor.Generator.MemberAccessExpression(avaloniaNamespace, "Media")
+                .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
 
             if (originalTypeSymbol.ToDisplayString() == "System.Windows.DependencyObject")
             {
@@ -86,21 +91,20 @@ namespace AvaloniaAnalyzers
             {
                 newTypeSyntax = editor.Generator.MemberAccessExpression(avaloniaControlsNamespace, originalTypeSymbol.Name);
             }
+            else if (originalTypeSymbol.ContainingNamespace.ToDisplayString() == "System.Windows.Media")
+            {
+                newTypeSyntax = editor.Generator.MemberAccessExpression(avaloniaMediaNamespace, originalTypeSymbol.Name);
+            }
 
             if (newTypeSyntax != null)
             {
-                var newSymbol = GetTypeSymbolFromNewSyntax(editor.SemanticModel, newTypeSyntax);
+                var newSymbol = editor.SemanticModel.GetSpeculativeTypeInfo(0, newTypeSyntax, SpeculativeBindingOption.BindAsExpression).Type;
                 if (newSymbol != null)
                 {
-                    editor.ReplaceNode(type, editor.Generator.TypeExpression(newSymbol)); 
+                    editor.ReplaceNode(type, editor.Generator.TypeExpression(newSymbol).WithAdditionalAnnotations(Formatter.Annotation));
                 }
             }
-            return editor.GetChangedDocument();
-        }
-
-        private static ITypeSymbol GetTypeSymbolFromNewSyntax(SemanticModel model, SyntaxNode newTypeSyntax)
-        {
-            return model.GetSpeculativeTypeInfo(0, newTypeSyntax, SpeculativeBindingOption.BindAsExpression).Type;
+            return await ImportAdder.AddImportsAsync(editor.GetChangedDocument(), Annotations.NamespaceImportAnnotation, cancellationToken: c);
         }
     }
 }

@@ -100,7 +100,7 @@ namespace AvaloniaAnalyzers
                 editor.AddMember(await fieldSymbol.ContainingType.DeclaringSyntaxReferences[0].GetSyntaxAsync(cancellationToken), staticConstructor);
             }
 
-            return await ImportAdder.AddImportsAsync(editor.GetChangedDocument(), NamespaceImportAnnotation, cancellationToken: cancellationToken);
+            return await ImportAdder.AddImportsAsync(editor.GetChangedDocument(), Annotations.NamespaceImportAnnotation, cancellationToken: cancellationToken);
         }
     }
 }

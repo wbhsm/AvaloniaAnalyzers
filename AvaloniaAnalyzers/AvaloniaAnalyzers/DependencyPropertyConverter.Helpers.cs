@@ -13,8 +13,6 @@ namespace AvaloniaAnalyzers
 {
     static class DependencyPropertyConverter
     {
-        internal static readonly SyntaxAnnotation NamespaceImportAnnotation = new SyntaxAnnotation();
-
         public static void ReplaceMember(DocumentEditor editor, SemanticModel model, VariableDeclaratorSyntax original, InvocationExpressionSyntax avaloniaInvocation)
         {
             var parent = (VariableDeclarationSyntax)original.Parent;
@@ -36,7 +34,7 @@ namespace AvaloniaAnalyzers
         {
             var avaloniaNamespace = generator.IdentifierName("Avalonia");
             var avaloniaPropertyIdentifier = generator.MemberAccessExpression(avaloniaNamespace, "AvaloniaProperty")
-                .WithAdditionalAnnotations(NamespaceImportAnnotation);
+                .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
             var avaloniaPropertyMethodName = dependencyPropertyMethodName.EndsWith("ReadOnly") ?
                 dependencyPropertyMethodName.Remove(dependencyPropertyMethodName.Length - "ReadOnly".Length) // Can remove if/when we add support for read-only properties
                 : dependencyPropertyMethodName;

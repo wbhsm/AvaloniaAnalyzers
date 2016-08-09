@@ -28,17 +28,47 @@ namespace AvaloniaAnalyzers
         {
             context.RegisterSymbolAction(AnalyzeType, SymbolKind.NamedType);
             context.RegisterSymbolAction(AnalyzeMethod, SymbolKind.Method);
+            context.RegisterSymbolAction(AnalyzeProperty, SymbolKind.Property);
+            context.RegisterSymbolAction(AnalyzeField, SymbolKind.Field);
+        }
+
+        private static void AnalyzeField(SymbolAnalysisContext context)
+        {
+            var fieldSymbol = (IFieldSymbol)context.Symbol;
+            if (IsWpfType(fieldSymbol.Type))
+            {
+                var variableDeclaratorSyntax = (VariableDeclaratorSyntax)fieldSymbol.DeclaringSyntaxReferences[0].GetSyntax(context.CancellationToken);
+                var declaration = variableDeclaratorSyntax.Parent as VariableDeclarationSyntax;
+                context.ReportDiagnostic(Diagnostic.Create(Rule, declaration.Type.GetLocation(), declaration.Type.ToString()));
+            }
+        }
+
+        private static void AnalyzeProperty(SymbolAnalysisContext context)
+        {
+            var propertySymbol = (IPropertySymbol)context.Symbol;
+            if (IsWpfType(propertySymbol.Type))
+            {
+                var propertySyntax = (PropertyDeclarationSyntax)propertySymbol.DeclaringSyntaxReferences[0].GetSyntax(context.CancellationToken);
+                context.ReportDiagnostic(Diagnostic.Create(Rule, propertySyntax.Type.GetLocation(), propertySyntax.Type.ToString()));
+            }
+            ReportParameterDiagnostics(context, propertySymbol.Parameters);
         }
 
         private static void AnalyzeMethod(SymbolAnalysisContext context)
         {
             var methodSymbol = (IMethodSymbol)context.Symbol;
-            foreach (var param in methodSymbol.Parameters)
+            var parameters = methodSymbol.Parameters;
+            ReportParameterDiagnostics(context, parameters);
+        }
+
+        private static void ReportParameterDiagnostics(SymbolAnalysisContext context, ImmutableArray<IParameterSymbol> parameters)
+        {
+            foreach (var param in parameters)
             {
-                if(IsWpfType(param.Type))
+                if (IsWpfType(param.Type) && !param.DeclaringSyntaxReferences.IsEmpty)
                 {
                     //Report diagnostic
-                    var paramSyntax = (ParameterSyntax)param.DeclaringSyntaxReferences[0].GetSyntax();
+                    var paramSyntax = (ParameterSyntax)param.DeclaringSyntaxReferences[0].GetSyntax(context.CancellationToken);
                     var paramTypeSyntax = paramSyntax.Type;
                     context.ReportDiagnostic(Diagnostic.Create(Rule, paramTypeSyntax.GetLocation(), paramTypeSyntax.ToString()));
                 }
@@ -50,17 +80,26 @@ namespace AvaloniaAnalyzers
             var typeSymbol = (ITypeSymbol)context.Symbol;
             if (IsWpfType(typeSymbol.BaseType))
             {
-                var classSyntax = (ClassDeclarationSyntax)typeSymbol.DeclaringSyntaxReferences[0].GetSyntax();
-                var baseTypes = classSyntax.BaseList.Types;
-                var semanticModel = context.Compilation.GetSemanticModel(classSyntax.SyntaxTree);
-                var typeToFlag = baseTypes.First(baseType => semanticModel.GetTypeInfo(baseType.Type).Type == typeSymbol.BaseType);
-                context.ReportDiagnostic(Diagnostic.Create(Rule, typeToFlag.GetLocation(), typeToFlag.ToString()));
+                foreach (var syntaxReference in typeSymbol.DeclaringSyntaxReferences)
+                {
+                    var classSyntax = (ClassDeclarationSyntax)syntaxReference.GetSyntax(context.CancellationToken);
+                    var baseTypes = classSyntax.BaseList?.Types;
+                    if (baseTypes.HasValue)
+                    {
+                        var semanticModel = context.Compilation.GetSemanticModel(classSyntax.SyntaxTree);
+                        var typeToFlag = baseTypes.Value.FirstOrDefault(baseType => semanticModel.GetTypeInfo(baseType.Type).Type == typeSymbol.BaseType);
+                        if (typeToFlag != null)
+                        {
+                            context.ReportDiagnostic(Diagnostic.Create(Rule, typeToFlag.GetLocation(), typeToFlag.ToString())); 
+                        }
+                    } 
+                }
             }
         }
 
         private static bool IsWpfType(ITypeSymbol type)
         {
-            var assemblyName = type.ContainingAssembly.Name;
+            var assemblyName = type.ContainingAssembly?.Name;
             return WpfAssemblyNames.Contains(assemblyName);
         }
     }

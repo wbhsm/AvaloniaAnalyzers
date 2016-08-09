@@ -32,6 +32,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Annotations.cs" />
     <Compile Include="DependencyPropertyConverter.Fixer.cs" />
     <Compile Include="DependencyPropertyConverter.Analyzer.cs" />
     <Compile Include="DependencyPropertyConverterFixAllProvider.cs" />
