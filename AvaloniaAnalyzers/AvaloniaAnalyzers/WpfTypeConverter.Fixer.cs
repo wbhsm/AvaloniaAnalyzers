@@ -63,6 +63,10 @@ namespace AvaloniaAnalyzers
                 .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
             var avaloniaControlsNamespace = editor.Generator.MemberAccessExpression(avaloniaNamespace, "Controls")
                 .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
+            var avaloniaControlsPrimitivesNamespace = editor.Generator.MemberAccessExpression(avaloniaControlsNamespace, "Primitives")
+                .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
+            var avaloniaControlsShapesNamespace = editor.Generator.MemberAccessExpression(avaloniaControlsNamespace, "Shapes")
+                .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
             var avaloniaMediaNamespace = editor.Generator.MemberAccessExpression(avaloniaNamespace, "Media")
                 .WithAdditionalAnnotations(Annotations.NamespaceImportAnnotation);
 
@@ -81,7 +85,7 @@ namespace AvaloniaAnalyzers
             }
             else if (originalTypeSymbol.ToDisplayString() == "System.Windows.Controls.Control")
             {
-                newTypeSyntax = editor.Generator.MemberAccessExpression(avaloniaControlsNamespace, "TemplatedControl");
+                newTypeSyntax = editor.Generator.MemberAccessExpression(avaloniaControlsPrimitivesNamespace, "TemplatedControl");
             }
             else if (originalTypeSymbol.ToDisplayString() == "System.Windows.Window")
             {
@@ -94,6 +98,10 @@ namespace AvaloniaAnalyzers
             else if (originalTypeSymbol.ContainingNamespace.ToDisplayString() == "System.Windows.Media")
             {
                 newTypeSyntax = editor.Generator.MemberAccessExpression(avaloniaMediaNamespace, originalTypeSymbol.Name);
+            }
+            else if (originalTypeSymbol.ContainingNamespace.ToDisplayString() == "System.Windows.Shapes")
+            {
+                newTypeSyntax = editor.Generator.MemberAccessExpression(avaloniaControlsShapesNamespace, originalTypeSymbol.Name);
             }
 
             if (newTypeSyntax != null)

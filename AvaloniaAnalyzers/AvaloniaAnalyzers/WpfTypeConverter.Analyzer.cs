@@ -99,7 +99,7 @@ namespace AvaloniaAnalyzers
 
         private static bool IsWpfType(ITypeSymbol type)
         {
-            var assemblyName = type.ContainingAssembly?.Name;
+            var assemblyName = type?.ContainingAssembly?.Name;
             return WpfAssemblyNames.Contains(assemblyName);
         }
     }
